@@ -171,6 +171,14 @@ parse_expression :: proc(using parser: ^Parser) -> ^Node {
 	return lhs;
 }
 
+parse_statement :: proc(using parser: ^Parser) -> ^Node {
+	t := current_token(parser);
+
+	expr := parse_expression(parser);
+
+	return nil;
+}
+
 parse :: proc(using parser: ^Parser) {
 
 }
