@@ -4,6 +4,9 @@ NodeType :: enum {
 	Literal,
 	BinaryOp,
 	UnaryOp,
+	Declaration,
+	Assignment,
+	Function,
 }
 
 Node :: struct {
@@ -54,7 +57,33 @@ UnaryOp :: struct {
 	rhs: ^Node,
 }
 
+Declaration :: struct {
+	using node: Node,
+	ident: ^Node,
+	dtype: ^Node, // Can be nil
+	expr: ^Node, // Can be nil - type and expr cant both be nil, syntax error
+}
+
+Assignment :: struct {
+	using node: Node,
+	ident: ^Node,
+	expr: ^Node,
+}
+
+Argument :: struct {
+	type: ^Node, // If this is nil, the type is inherited from the previuos argument
+	ident: ^Node,
+}
+
+Function :: struct {
+	using node: Node,
+	name: ^Node,
+	args: [dynamic]Argument,
+	block: ^Node,
+}
+
 // TODO(thebirk): This needs to be freed after an ast is used. Dont do it yet as we only ever load one file
+// Is there a better way to do this? Store it on the parser??
 global_string_pool: [dynamic]string;
 strdup :: proc(s: string) -> string {
 	ns := make([]byte, len(s));
@@ -118,6 +147,28 @@ make_number_literal :: proc(t: Token) -> ^Literal {
 			assert(false); // We should not be here!
 		}
 	}
+
+	return n;
+}
+
+make_declaration_node :: proc(ident: ^Node, type: ^Node, expr: ^Node) -> ^Declaration {
+	n := new(Declaration);
+	n.type = NodeType.Declaration;
+
+	n.ident = ident;
+	n.dtype = type;
+	n.expr = expr;
+
+	return n;
+}
+
+make_func_node :: proc(name: ^Node, args: [dynamic]Argument, block: ^Node) -> ^Function {
+	n := new(Function);
+	n.type = NodeType.Function;
+
+	n.name = name;
+	n.args = ags;
+	n.block = block;
 
 	return n;
 }

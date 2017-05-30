@@ -137,6 +137,7 @@ parse_expression :: proc(using parser: ^Parser) -> ^Node {
 		unary = true;
 		t = eat_token(parser);
 	}
+	// FIX!
 	// NOTE(thebirk): Should unary work on the term below or the enitre expression at the end
 	//                The single below probably
 
@@ -171,12 +172,82 @@ parse_expression :: proc(using parser: ^Parser) -> ^Node {
 	return lhs;
 }
 
+parse_try_type :: proc(using parser: ^Parser) -> ^Node {
+	return nil;
+}
+
 parse_statement :: proc(using parser: ^Parser) -> ^Node {
 	t := current_token(parser);
+	start_token := t;
 
-	expr := parse_expression(parser);
+	lhs := parse_expression(parser);
+
+	t = current_token(parser);
+	if accept(parser, TokenType.SemiColon) {
+		// Function call or non meaningful expression
+		set_location_from_token(lhs, t);
+		return lhs;
+	} else if accept(parser, TokenType.Colon) {
+		type := parse_try_type(parser); // Tries to parse a type if there is one there, returns nil otherwise
+
+		if accept(parser, TokenType.Equal) {
+			expr := parse_expression(parser);
+			expect(parser, TokenType.SemiColon);
+			fmt.println("made decl node!");
+			decl := make_declaration_node(lhs, type, expr);
+			set_location_from_token(decl, start_token);
+			return decl;
+		} else if accept(parser, TokenType.SemiColon) {
+			decl := make_declaration_node(lhs, type, nil);
+			set_location_from_token(decl, start_token);
+			return decl;
+		} else {
+			report_error(parser, "Expected '=' or ';' while parsing declaration! Got %s", current_token(parser));
+			return nil;
+		}
+
+	}
 
 	return nil;
+}
+
+parse_block :: proc(using parser: ^Parser) -> ^Node {
+	return nil;
+}
+
+parse_top_level :: proc(using parser: ^Parser) -> ^Node {
+	t := current_token(parser);
+
+	if accept(parser, TokenType.Func) {
+		name := parse_expression(parer);
+		if name != nil && name.type != NodeType.Ident {
+			report_error(parser, "Expected an identifier after 'func'!");
+			return nil;
+		}
+
+		expect(parser, TokenType.LeftPar);
+		t = current_token(parser);
+		for t.type != TokenType.RightPar {
+			if t.type == TokenType.EOF {
+				report_error(parser, "Unexpected end of file!");
+			}
+
+			type := parse_try_type(parser);
+			if type != nil {
+				expect(parser, TokenType.Colon);
+			}
+			// TODO(thebirk): Figure out logic for argument type inhertance!!
+		}
+	} else if accept(parser, TokenType.Struct) {
+
+	} else {
+		// Parse a single statement, make sure thats a declaration
+		decl := parse_statement(parser);
+		if decl != nil && decl.type != NodeType.Declaration {
+			report_error("Only func, struct and declarations are allowed at a top level!");
+			return nil;
+		}
+	}
 }
 
 parse :: proc(using parser: ^Parser) {
